@@ -1,0 +1,4 @@
+这个项目从豆瓣网电影白日梦想家(The secret life of Walter Mitty)影评页面爬虫获得了数据集The_secret_life_of_Walter_Mitty.csv，和筛出只有影评内容
+的数据集The_secret_life_of_walter_mitty_content.csv，通过The_secret_life_of_walter_mitty_content.csv形成了词云分析。
+
+这个项目的所有代码在review_analysis.ipynb里。
