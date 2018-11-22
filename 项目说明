@@ -1,0 +1,1 @@
+这个项目的数据集是推特昵称为WeRateDogs的推特用户 @dog_rates 对宠物狗评分发的推特，@dog_rates对狗狗的评分以10为基础，例如12/10，13/10，14/10，通常都是分母为10， 分子大于分母。这个项目一共有七个文件，其中image-predictions.tsv是推文中出现过的对宠物狗种类的预测，tweet_json.txt是额外的API附加数据，twitter_archive_master.csv是清洗完的干净数据，wrangle_report.pdf是陈述整个数据清洗过程的清洗报告，act_report.pdf是展示分析和可视化清理好的数据的报告，这个项目所有的代码是wrangle_act.ipynb。
