@@ -1,0 +1,806 @@
+用R分析ProsperLoanData
+========================================================
+
+# Load all of the packages 
+
+# 加载最终使用的所有组件
+
+
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+library(ggplot2)
+library(reshape)
+library(reshape2)
+library(dplyr)
+library(maps)
+library(RColorBrewer)
+library(GGally)
+library(scales)
+library(memisc)
+library(gridExtra)
+```
+
+# Notice that the parameter "echo" was set to FALSE for this code chunk.
+# This prevents the code from displaying in the knitted HTML output.
+# You should set echo=FALSE for all code chunks in your file.
+
+# 注意，在这个代码块中，将参数 "echo" 设为假。
+# This prevents the code from displaying in the knitted HTML output.这可以避免代码混入 HTML 输出显示。
+# 应当在文件中，对所有代码块设为 echo=FALSE 。
+
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+# Load the Data
+# 加载数据
+pf<-read.csv('prosperLoanData.csv')
+str(pf)
+```
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+names(pf)
+```
+
+# Univariate Plots Section
+# 单变量绘图选择
+
+# 查看筹资者通过网贷平台进行借款时所承诺的最终偿还期限
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+ggplot(aes(Term),data = pf) + 
+  geom_bar()
+```
+
+
+# 查看上市时信用评级情况
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+ggplot(aes(x=CreditGrade), data=pf)+geom_bar()+
+  theme(axis.text.x=element_text(angle=90, vjust=1, hjust=1))
+```
+
+可以知道，所有信用评级的数量分布都差不多。
+
+
+# 查看借款人的贷款年利率(APR)
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+qplot(x=BorrowerAPR, data=pf)
+```
+
+借款人的贷款年利率(APR)都集中于0.1-0.38之间。
+
+
+# 借款人的贷款利率
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+qplot(x=BorrowerRate, data=pf)
+```
+
+借款人的贷款利率集中于0.05-0.35之间。
+
+
+
+
+# 查看预期有效收益率
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+qplot(x=EstimatedEffectiveYield, data=pf)
+```
+
+贷款人的预期有效收益率集中于0.05-0.3之间。
+
+
+
+# 查看创建清单时的评级
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+qplot(x=ProsperRating..numeric., data=pf, binwidth=0.5)+ scale_x_continuous(breaks=seq(0, 7, 1))
+```
+
+从图中看到，评级为4的数量最多。
+
+# 查看在AA - HR之间上市时的评级
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+ggplot(aes(x=ProsperRating..Alpha.), data=pf)+ geom_bar() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=0.5))
+```
+
+从图中看到，信用等级C的数量最多，其次是B，A，而信用等级越高，偿债能力越强，图中的信用等级低的占的比重较大，所以偿债能力较弱。
+
+# 查看根据历史繁荣数据构建的自定义风险评分
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+qplot(x=ProsperScore, data=pf, binwidth=0.5)+
+  scale_x_continuous(breaks=seq(0, 11, 1))
+```
+
+从图中看到，历史繁荣数据最多的自定义风险评分是4，6，8
+
+
+
+
+# 查看借款人在挂牌时所选择的上市类别
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+qplot(x=ListingCategory..numeric., data=pf, binwidth=0.5)+scale_x_continuous(breaks=seq(0, 20, 1))
+```
+
+从图中可知，为1的类别（债务整合）所占数量最多。
+
+# 查看借款人的受雇佣情况
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+ggplot(aes(x=EmploymentStatus), data=pf)+
+  geom_bar()+
+  theme(axis.text.x=element_text(angle=90, vjust=1, hjust=1))
+```
+
+由图可知，Employed（在职）占最多数量
+
+# 查看贷款人借款地点
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+ggplot(aes(x=BorrowerState), data=pf)+
+  geom_bar()+
+  theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1))
+```
+
+由图可知，贷款人借款地点数量最多是CA，即California，原因可能和prosper总部在旧金山有关。
+
+# 查看贷款人职业
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+ggplot(aes(x=Occupation), data=pf)+
+  geom_bar()+
+  theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1))
+```
+
+由图可知，贷款人职业数量最多的是Others，可能是因为很多人填资料时没如实填写信息。
+
+# 查看受雇佣状态持续时间
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+qplot(x=EmploymentStatusDuration, data=pf, binwidth=40)+scale_x_continuous(breaks=seq(0, 800, 80))
+```
+
+可以看出，受雇佣状态持续时间数量最多的是40-80，0-40，受雇佣状态持续时间从80-480逐渐递减。
+
+# 如果借款人的信用档案中有抵押贷款或提供确认其为房主的文件，则借款人将被归类为房主。
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+qplot(x=IsBorrowerHomeowner, data=pf)
+```
+
+房主和不是房主的数量差不多。
+
+# 借款人是否在组中
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+qplot(x=CurrentlyInGroup, data=pf)
+```
+
+借款人不在组中比在组中数量更多。
+
+# 查看贷款人信用卡的使用额度占信用卡额度比例情况
+
+（将BankcardUtilization>=1分为High,
+ 0.5<BankcardUtilization<=1分为mid,
+ 0<BankcardUtilization<=0.5分为low。）
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+pf$Bankcard[highBankutilization<-(pf$BankcardUtilization>=1)] <-"High"
+pf$Bankcard[lowBankutilization<-(pf$BankcardUtilization>0&pf$BankcardUtilization<=0.5)] <-"low"
+pf$Bankcard[midBankutilization<-(pf$BankcardUtilization>0.5&pf$BankcardUtilization<1)]<-"mid"
+```
+  
+# 画出非空BankcardUtilization low, mid, high各个分组的柱形图
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+ggplot(aes(Bankcard),data = subset(pf,!is.na(BankcardUtilization))) +
+  geom_bar()
+```
+  由图可知，贷款人信用卡的使用额度占信用卡额度比例较高。
+
+# 将信用评分范围取中间值，命名为CreditRangeHighLow，将LoanOriginationDate字符串转化为日期；
+
+# LoanOriginationDate 2009-7-1以前的命名为old，2009-07-01以后的命名为new
+
+（再将信用等级CreditGrade按"NC","HR","E","D","C","B","A","AA"的顺序排列）
+
+（信用等级ProsperRating..Alpha.按"HR","E","D","C","B","A","AA"的顺序排列）
+
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+pf$CreditRangeHighLow <-(pf$CreditScoreRangeLower+pf$CreditScoreRangeUpper)/2
+pf$LoanOriginationDate <- as.Date(pf$LoanOriginationDate)
+
+pf$Phase[pf$LoanOriginationDate > "2009-07-01"] <- "new"
+pf$Phase[pf$LoanOriginationDate < "2009-07-01"] <- "old"
+pf$CreditGradeupdated <- 
+  ordered(pf$CreditGrade,levels = c("NC","HR","E","D","C","B","A","AA"))
+pf$ProsperRating..Alpha.<-
+  ordered(pf$ProsperRating..Alpha.,levels = c("HR","E","D","C","B","A","AA"))
+```
+
+
+# q1画取值400-900范围内的CreditRangeHighLow直方图
+# q2画2009年以前的信用等级直方图
+# q3画2009年以后的信用等级直方图
+# 最后合并q1, q2, q3
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+q1 <- qplot(CreditRangeHighLow,data = pf,color=I('black'),fill=I('#00AA55')) +
+  xlim(400,900) + 
+  ggtitle('信用评级情况')
+q2 <- qplot(CreditGradeupdated,data = subset(pf,LoanOriginationDate < "2009-07-01"),color=I('black'),fill=I('orange')) +
+  scale_x_discrete(limits = c("HR","E","D","C","B","A","AA")) + 
+  ggtitle('Before 2009')
+q3 <- qplot(x = ProsperRating..Alpha.,data = subset(pf,
+  LoanOriginationDate > "2009-07-01"), color=I('pink'),fill=I('#099DD9')) + 
+    scale_x_discrete(limits = c("HR","E","D","C","B","A","AA")) +
+   ggtitle('After 2009')
+grid.arrange(q1,q2,q3)
+```
+
+借款人的信用分大部分在620-750范围内。
+
+# 查看信贷资料被调查时的当前信贷额度。
+
+
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+qplot(x=CurrentCreditLines, data=pf, binwidth=0.5)+
+  scale_x_continuous(breaks=seq(0, 40, 5))
+```
+
+可以看出，调查时的当前信贷额度最多的区域集中于0-20
+
+
+# 过去7年信贷额度。
+
+
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+qplot(x=TotalCreditLinespast7years, data=pf, binwidth=0.5)+
+  scale_x_continuous(breaks=seq(0, 90, 10))
+```
+
+过去7年信贷额度数量最多区域集中于0-60
+
+# 查看开立的循环帐户数量
+
+
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+qplot(x=OpenRevolvingAccounts, data=pf, binwidth=0.5)+
+  scale_x_continuous(breaks=seq(0, 30, 5))
+```
+
+从图可知，循环帐户数量最多是5个，从5个开始呈现递减。
+
+
+
+# 查看当前拖欠额度
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+qplot(x=CurrentDelinquencies, data=pf)
+```
+
+拖欠的信用额度不是很多。
+
+
+
+# 查看信用资料提交时借款人过去7年违约次数,该指标在一定程度上可以体现借款标发布者的信用状况
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+qplot(x=DelinquenciesLast7Years, data=pf)
+```
+
+违约情况不是很严重
+
+
+# 查看开设的交易行数
+
+
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+qplot(x=TotalTrades, data=pf, binwidth=0.5)+
+  scale_x_continuous(breaks=seq(0, 70, 10))
+```
+
+交易行数从0-20增加，从20-70递减。
+
+
+
+# 查看借款人的债务收入
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+ggplot(aes(DebtToIncomeRatio),data = pf) + 
+  geom_histogram() + xlim(0,1)
+```
+
+由图可知，0-0.5是最多的借款人的债务收入范围，所以筹资者财务状况越差,还款能力较低。
+
+
+
+# 查看贷款人年收入范围
+
+
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+ggplot(aes(x=IncomeRange), data=pf)+
+  geom_bar()+
+  theme(axis.text.x=element_text(angle=90, vjust=1, hjust=1))
+```
+
+由图可知，贷款人年收入范围最多的是$25000-49999, $50000-74999, $100000+, 说明贷款人大部分有较多资金  
+
+
+# 查看Prosper在创建此列表时借给他人的贷款数量
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+qplot(x=TotalProsperLoans, data=pf, binwidth=0.5)+
+  scale_x_continuous(breaks=seq(0, 8, 1))
+```
+
+可以看到，借出1笔的数量最多
+
+
+
+# 查看贷款的初始金额
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+qplot(LoanOriginalAmount,data = pf,binwidth = 800) +
+  scale_x_continuous(breaks = seq(0,35000,5000))
+```
+
+可以看出，4000-5000， 10000， 15000的初始金额数量最多。
+
+# 查看预定的每月贷款支付
+
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+qplot(MonthlyLoanPayment,data = pf,binwidth = 10) +
+  scale_x_continuous(breaks = seq(0,1300,200))
+```
+
+
+可以看出，每月需偿还的贷款数量最多的是200
+
+
+# 查看为贷款提供资金的投资者的数量
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+qplot(Investors,data = pf,binwidth = 10) +
+  scale_x_continuous(breaks = seq(0,700,100))
+```
+
+为贷款提供资金的投资者数量在0-100区间最多，之后递减。
+
+# 查看投资者数量直方图、正态分布图等
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+p1<-qplot(x=Investors, data=pf)
+p2<-qplot(x=log10(Investors+1), data=pf)
+p3<-qplot(x=sqrt(Investors), data=pf)
+
+grid.arrange(p1, p2, p3, ncol=1)
+```
+
+# 合并图
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+p1<-ggplot(aes(x=TotalTrades), data=pf)+geom_histogram()
+p2<-p1+scale_x_log10()
+p3<-p1+scale_x_sqrt()
+grid.arrange(p1, p2, p3, ncol=1)
+```
+
+
+# Univariate Analysis
+# 单变量分析
+
+### What is the structure of your dataset?
+### 你的数据集结构是什么？
+
+CreditGrade 信用等级,反映的是2009年7月1日前客户的信用级,信用等级越高,其偿债能力越强
+
+BorrowerAPR 贷款的年利率（APR）
+
+BorrowerRate 贷款利率,作为P2P平台资金借贷价格的代理变量,BorrowerRate不包含其他费用,是筹资者付给投资人的报酬
+
+EstimatedEffectiveYield
+有效收益等于借款人利率（i）减去服务费率，（ii）减去收取的未收取利息，（iii）加上估计收取的滞纳金。 适用于2009年7月以后发放的贷款。
+
+ProsperRating..numeric.  创建列表时分配的Prosper评级：0 - N / A，1 - HR，2 - E，3 - D，4 - C，5 - B，6 - A，7 - AA。 适用于2009年7月以后发放的贷款。
+
+ProsperRating..Alpha. 信用等级,反映的是2009年7月1日后的信用等级.信用等级越高,其偿债能力越强
+
+ProsperScore 使用历史Prosper数据构建的自定义风险评分。 得分从1-10开始，10分是最好的，或者是最低的风险分数。 适用于2009年7月以后发放的贷款。
+
+ListingCategory 借款人在挂牌时所选择的上市类别：0 -不可用，1 -债务合并，2 -家庭改善，3 -业务，4 -个人贷款，5 -学生使用，6 -自动，7 -其他，8 -婴儿和收养，9 -船，10 -美容程序，11订婚戒指，绿色贷款，13 -家庭开支，14 -大型购买，15 -医疗/牙科，16 -摩托车，17 -右室，18 -税，19 -假期，20 -婚礼贷款
+
+EmploymentStatus 贷款人受雇佣状态(Self-employed、Employed等)
+
+BorrowerState 贷款人借款地点
+
+Occupation 贷款人职业
+
+EmploymentStatusDuration 受雇佣状态持续时间(以月为计算单位)
+
+IsBorrowerHomeowner 如果借款人的信用档案中有抵押贷款或提供确认其为房主的文件，则借款人将被归类为房主
+
+CurrentlyInGroup  指定在列表创建时借款人是否在一个组中。
+
+BankcardUtilization 使用的可用循环信用的百分比
+
+CreditScoreRangeLower 由消费者信用评级机构提供的借款人信用评分范围的下限值
+
+CreditScoreRangeUpper 由消费者信用评级机构提供的借款人信用评分范围的上限值
+
+LoanOriginationDate 贷款发起的日期
+
+CurrentCreditLines  信贷资料被调查时的当前信贷额度
+
+TotalCreditLinespast7years  信贷资料在过去七年中的信用额度
+
+OpenRevolvingAccounts 开立的循环账户数量
+
+CurrentDelinquencies 当前拖欠额度
+
+DelinquenciesLast7Years 
+信用资料提交时借款人过去7年违约次数,该指标在一定程度上可以体现借款标发布者的信用状况
+
+TotalTrades  开设的交易行数
+
+DebtToIncomeRatio 借款人的债务收入比,债务收入比越高说明筹资者财务状况越差,还款能力较低.其向P2P平台借款时,投资者应要求有更高的回报。
+
+IncomeRange 贷款人年收入范围
+
+TotalProsperLoans Prosper在创建此列表时借给他人的贷款数量
+
+LoanOriginalAmount   贷款的初始金额
+
+MonthlyLoanPayment  预定的每月贷款支付
+
+Investors  为贷款提供资金的投资者的数量
+
+在单变量绘图中，通过画图可视化探讨了以下问题：贷款人来自什么地区，他们的收入范围，职业是什么？他们的信用评级，信用卡使用情况，贷款人的债务收入，为贷款提供资金的投资者数量情况等。
+
+主要用到的数据特征有：
+ProsperRating..numeric，ProsperRating..Alpha, BankcardUtilization, MonthlyLoanPayment, LoanOriginalAmount, Investors, IncomeRange等。
+
+由于收入范围IncomeRange的横坐标字重叠了，所以调整了图形，将横坐标的字设置为垂直；有些变量例如TotalCreditLinespast7years，TotalTrades, 缩小了横坐标的范围，能更清楚地看到这些变量的变化情况；从BankcardUtilization变量中分出了高，中，低三个组，能更清晰直观地看到贷款人信用卡的使用额度占信用卡额度比例情况; 以2009-07-01为分界线，来看信用评级情况，结果也更加明显。
+
+# Bivariate Plots Section
+# 双变量画图
+
+# 画信用评分CreditRangeHighLow 取值450-900范围和TotalTrades的散点图
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+ggplot(aes(x=CreditRangeHighLow, y=TotalTrades),data = pf) + 
+  geom_point(alpha=0.1,position="jitter") +
+  xlim(450,900) +
+  geom_smooth(method = 'lm',aes(group = 1))+ggtitle('The relationship between Credit Score Range and Total Trades')
+```
+
+# 看CreditRangeHighLow和TotalTrades的相关联程度
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+cor.test(pf$CreditRangeHighLow,pf$TotalTrades)
+```
+
+
+由此可以看出，TotalTrades和CreditRangeHighLow呈缓慢正向相关，没有很明显的关联，说明评分级别和交易行数的关系不确定。
+
+
+
+# 画信用评分CreditRangeHighLow取值450-900范围和TradesNeverDelinquent..percentage.的散点图
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+ggplot(aes(x=CreditRangeHighLow, y=TradesNeverDelinquent..percentage.),data = pf) + 
+  geom_point(alpha=0.1,position="jitter") +
+  xlim(450,900) +
+  geom_smooth(method = 'lm',aes(group = 1))+ggtitle('The relationship between Credit Score Range and Trades Never Delinquent')
+```
+
+# 看CreditRangeHighLow和TradesNeverDelinquent..percentage.的关联程度
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+cor.test(pf$CreditRangeHighLow, pf$TradesNeverDelinquent..percentage.)
+```
+
+
+可以看出，信用评级越高，就越不可能出现拖欠交易。
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+ggplot(aes(x=CreditRangeHighLow, y=EstimatedEffectiveYield),data = pf) + 
+  geom_point(alpha=0.1,position="jitter") +
+  xlim(400,950) +
+  geom_smooth(method = 'lm',aes(group = 1))+ggtitle('The relationship between Credit Score Range and Estimated Effective Yield')
+```
+
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+cor.test(pf$CreditRangeHighLow,pf$EstimatedEffectiveYield)
+```
+
+CreditRangeHighLow和EstimatedEffectiveYield存在-0.445的负相关关联。
+
+# 画CreditRangeHighLow取值400-1000和BorrowerRate的散点图
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+ggplot(aes(x=CreditRangeHighLow, y=BorrowerRate),data = pf) + 
+  geom_point(alpha=0.1,position="jitter") +
+  xlim(400,1000) +
+  geom_smooth(method = 'lm',aes(group = 1))+ggtitle('The relationship between Credit Score Range and Borrower Rate')
+```
+
+# 看CreditRangeHighLow和BorrowerRate的关联程度
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+cor.test(pf$CreditRangeHighLow,pf$BorrowerRate)
+```
+
+对于BorrowerRate和CreditRangeHighLow来说，它有-0.46的负相关关联，信用等级越高的人更有可能以较低利率借到贷款。
+
+
+# 画IncomeRange和LoanOriginalAmount的散点图，
+（IncomeRange按"Not displayed", "Not employed", "$0", "$1-24,999", "$25,000-49,999", "$50,000-74,999", "75,000-99,999", "$100,000+ 的顺序排列）
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+pf$IncomeRange<-ordered(pf$IncomeRange,levels=c("Not displayed",
+                                                "Not employed","$0",
+                                                "$1-24,999",
+                                                "$25,000-49,999",
+                                                "$50,000-74,999",
+                                                "75,000-99,999",
+                                                "$100,000+"))
+ggplot(aes(x=IncomeRange,y=LoanOriginalAmount,color=IncomeRange),
+       data = subset(pf,!is.na(IncomeRange))) +
+  geom_boxplot() + scale_x_discrete() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ggtitle('The relationship between Income Range and Loan Original Amount')
+```
+
+随着工资的增长，贷款金额也增长了。
+
+# 画还款期限Term和拖欠天数LoanCurrentDaysDelinquent的箱形图
+
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+ggplot(data=pf, aes(x=factor(Term), y=LoanCurrentDaysDelinquent)) +
+  geom_jitter(alpha=0.01) +
+  geom_boxplot(alpha=0.8)+ggtitle('The relationship between Term and LoanCurrentDaysDelinquent')
+```
+
+由图可以看出，还款期限36对应了最高的拖欠天数，但无法直观地看出Term和LoanCurrentDaysDelinquent之间的关系。
+
+# 画每月预付贷款和贷款金额之间的散点图
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+ggplot(aes(x=MonthlyLoanPayment, y=LoanOriginalAmount),data = pf) + 
+  geom_point(alpha=0.1,position="jitter") +
+  xlim(0, 60) +
+  geom_smooth(method = 'lm',aes(group = 1))+ggtitle('The relationship between MonthlyLoanPayment and LoanOriginalAmount')
+```
+
+
+从图中没看出每月预付贷款和贷款金额之间的关系。
+
+
+# 画LoanMonthsSinceOrigination和MonthlyLoanPayment的散点图
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+ggplot(aes(x=LoanMonthsSinceOrigination, y=MonthlyLoanPayment),data = pf) + 
+  geom_point(alpha=0.1,position="jitter") +
+  xlim(0, 60) +
+  geom_smooth(method = 'lm',aes(group = 1))+ggtitle('Loan Months Since Origination and Monthly Loan Payment')
+```
+
+
+从图中可以知道，每月预付贷款和贷款发起后的月数没有什么关联。
+
+
+# 画过去7年信用额度TotalCreditLinespast7years和开立的循环账户OpenRevolvingAccounts的散点图
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+ggplot(aes(x=TotalCreditLinespast7years,y=OpenRevolvingAccounts),data = pf) +
+  geom_boxplot() +
+  stat_summary(fun.y = 'mean',
+               geom = 'point',
+               color = 'blue') +
+  geom_smooth(method = 'lm',aes(group = 1))+ggtitle('The relationship between Total Credit Lines past 7 years and Open Revolving Accounts')
+```
+
+
+可以看出，过去7年信用额度越多，开立的循环账户数量越多。
+
+# 画投资者数量Investors和开立的循环账户OpenRevolvingAccounts的散点图和折线图
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+ggplot(aes(x=Investors,y=OpenRevolvingAccounts),data = pf) +
+  geom_boxplot() +
+  stat_summary(fun.y = 'mean',
+               geom = 'point',
+               color = 'black') +
+  geom_smooth(method = 'lm',aes(group = 1))+ggtitle('The relationship between Investors and Open Revolving Accounts')
+```
+
+可以看出，投资者的数量和开立的循环账户数量没有明显的关联。
+
+# 小结
+
+从双变量分析图中可以知道贷款利率和信用评级之间存在负相关，收入的提升可以借到更多的贷款，还款期限也可以随着贷款的增加而增加，信用额度越多，能开立的循环账户数量也越多。
+
+
+# Univariate Plots Section
+# 多变量画图
+
+# 画出2009-07-01分界，信用评分取值400-900和从未拖欠交易数量取值0-0.9的折线图
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+ggplot(aes(x=CreditRangeHighLow,y=TradesNeverDelinquent..percentage.),data = pf) + 
+  geom_jitter(alpha = 0.03,color = 'orange') + 
+  facet_wrap(~Phase,ncol = 1) + 
+   scale_x_continuous(limits=c(400,900))+
+  scale_y_continuous(limits=c(0, 0.9))+
+  geom_line(stat="summary", fun.y=mean)+
+  geom_line(stat="summary", fun.y=median,linetype=2,color="red")
+  
+```
+
+从图中可以看出，在2009-7-1号之前，信用评级从480开始，从未拖欠交易数量从0开始逐渐上升，而在2009-7-1号以后，信用评级从600开始，从未拖欠交易数量从0.75开始逐渐上升。
+
+# plot1是CreditRangeHighLow和TradesNeverDelinquent..percentage.的箱形图
+
+# plot2是ProsperRating..Alpha.和TradesNeverDelinquent..percentage.的箱形图
+
+（以2009-07-01为分界线）
+
+# 最后合并两个图
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+plot1 <- ggplot(aes(CreditRangeHighLow,TradesNeverDelinquent..percentage.),data =subset(pf,LoanOriginationDate < "2009-07-01")) +
+    scale_x_discrete(limits = c("HR","E","D","C","B","A","AA")) + 
+    geom_boxplot() +
+    stat_summary(fun.y = mean,geom = 'point',shape = 4) +
+    stat_summary(fun.y = mean,geom = 'smooth',aes(group = 1)) +
+  ggtitle(" Before 2009")
+plot2 <- ggplot(aes(ProsperRating..Alpha.,TradesNeverDelinquent..percentage.),data =subset(pf,LoanOriginationDate > "2009-07-01")) +
+  scale_x_discrete(limits = c("HR","E","D","C","B","A","AA")) + 
+  geom_boxplot() +
+  stat_summary(fun.y = mean,geom = 'point',shape = 4) +
+  stat_summary(fun.y = mean,geom = 'smooth',aes(group = 1)) + 
+  ggtitle("After 2009")
+grid.arrange(plot1,plot2,ncol = 1)
+```
+
+信用等级和从未拖欠交易数量折线由明显上升变为了平缓不变，说明prosper对于拖欠数量和信用等级加强了管理。
+
+# 在从未拖欠交易数量变量和贷款金额变量的散点图中用不同颜色标出对应的信用评分范围。
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+pf_credit_updated <- na.omit(pf$CreditRangeHighLow)
+Quantile <- quantile(pf_credit_updated, 0.5)
+ggplot(aes(x=LoanOriginalAmount, y=TradesNeverDelinquent..percentage., color=CreditRangeHighLow),
+       data=subset(pf, pf$CreditRangeHighLow > Quantile)) +
+  geom_point(alpha=0.5, position='jitter') + 
+  scale_colour_gradient(low="yellow", high="red")
+```
+
+从图中可以发现，信用评分700-750占了大部分区域。
+
+
+# 加入CreditGrade，Bankcard等变量，看在2009-07-01以前各个变量的R-squared等统计学信息。
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+m1 <- lm(I(TradesNeverDelinquent..percentage.) ~ I(CreditRangeHighLow),
+         data = subset(pf,LoanOriginationDate < "2009-07-01"
+         & !is.na(CreditGrade) & !is.na(LoanOriginalAmount) & !is.na(Bankcard) & !is.na(CreditRangeHighLow)))
+m2 <- update(m1, ~ . + CreditGrade)
+m3 <- update(m2, ~ . + LoanOriginalAmount)
+m4 <- update(m3, ~ . + Bankcard)
+mtable(m1, m2, m3, m4)
+```
+
+# 加入ProsperRating..Alpha.等，看在2009-07-01之后各个变量的R-squared等统计学信息。
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+m5 <- lm(I(TradesNeverDelinquent..percentage.) ~ I(CreditRangeHighLow), data = subset(pf,
+           LoanOriginationDate > "2009-07-01"
+         & !is.na(ProsperRating..Alpha.) & !is.na(LoanOriginalAmount) & !is.na(Bankcard)
+         & !is.na(CreditRangeHighLow)))
+m6 <- update(m5, ~ . + ProsperRating..Alpha.)
+m7 <- update(m6, ~ . + LoanOriginalAmount)
+m8 <- update(m7, ~ . + Bankcard)
+mtable(m5, m6, m7, m8)
+
+```
+
+
+从R-Squared可以看出对于信用评级，贷款金额和信用卡，从未拖欠交易数量的使用的比重上升，新用评分比重下降。
+------
+
+# Final Plots and Summary
+
+最后的图和总结
+
+# plot 1
+# 绘图1
+
+# 画出信用评分和从未拖欠交易数量之间的散点图
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+ggplot(aes(x=CreditRangeHighLow, y=TradesNeverDelinquent..percentage.),data = pf) + 
+  geom_point(alpha=0.1,position="jitter") +
+  xlim(450,900) +
+  geom_smooth(method = 'lm',aes(group = 1))+ggtitle('The relationship between Credit Score Range and Trades Never Delinquent Scatter Plot')
+```
+
+# 查看信用评分和从未拖欠交易数量的相关联程度
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+cor.test(pf$CreditRangeHighLow,pf$TradesNeverDelinquent..percentage.)
+```
+
+由信用评分和从未拖欠交易数量正相关关系来看，很可能信用评分和从未拖欠交易数量相互影响。
+
+# plot 2
+# 绘图2
+
+# 画出在2009-07-01前后信用评分和从未拖欠交易数量的折线图
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+ggplot(aes(x=CreditRangeHighLow,y=TradesNeverDelinquent..percentage.),data = pf) + 
+  geom_jitter(alpha = 0.02,color = 'orange') + 
+  facet_wrap(~Phase,ncol = 1) + 
+   scale_x_continuous(limits=c(400,900))+
+  scale_y_continuous(limits=c(0.0,0.9))+
+  geom_line(stat="summary", fun.y=mean)+
+  geom_line(stat="summary", fun.y=median,linetype=2,color="red")+ggtitle('The relationship between Credit Score Range and Trades Never Delinquent geom_line before and after 2009-07-01')
+```
+
+
+
+从2009-7-1年前后来看，2009-7-1号之后从信用评分600开始，从未拖欠交易数量比例从0.75开始上升，而在2009-7-1号之前信用评分从480开始，从未拖欠交易数量比例从0开始上升，很可能props 儿对信用评分和从未拖欠交易数量比例加强了管理。
+
+# plot 3
+# 绘图 3
+
+# 画2009-07-01前后信用等级和从未拖欠交易数量的箱形图
+
+```{r echo=FALSE, message=FALSE, warning = FALSE}
+plot1 <- ggplot(aes(CreditGrade,TradesNeverDelinquent..percentage.),data =subset(pf,LoanOriginationDate < "2009-07-01")) +
+    scale_x_discrete(limits = c("HR","E","D","C","B","A","AA")) + 
+    geom_boxplot() +
+    stat_summary(fun.y = mean,geom = 'point',shape = 4) +
+    stat_summary(fun.y = mean,geom = 'smooth',aes(group = 1)) +
+  ggtitle("The relationship between Credit Grade and Trades Never Delinquent Before 2009 box-plot")
+plot2 <- ggplot(aes(ProsperRating..Alpha.,TradesNeverDelinquent..percentage.),data =subset(pf,LoanOriginationDate > "2009-07-01")) +
+  scale_x_discrete(limits = c("HR","E","D","C","B","A","AA")) + 
+  geom_boxplot() +
+  stat_summary(fun.y = mean,geom = 'point',shape = 4) +
+  stat_summary(fun.y = mean,geom = 'smooth',aes(group = 1)) + 
+  ggtitle("The relationship between Prosper Ratinge and Trades Never Delinquent After 2009")
+grid.arrange(plot1,plot2,ncol = 1)
+```
+
+
+可以看出，在2009年前后，信用等级和从未拖欠交易数量折线由逐渐上升变为了平缓不变，说明prosper对于拖欠数量和信用等级加强了管理。
+
+
+#不足
+
+
+这个数据集数据变量较多，只能选取一些重要和想探索的进行分析。在单变量作图中，选取了30个变量画图；而在双变量，对还款期限，工资范围，贷款金额，拖欠天数等进行画图分析，在多变量画图中，以2009为未分界点，探索了信用评分，从未拖欠交易数量，借款金额，信用等级等变量；还有很多变量没有探讨和分析，后期可以通过机器学习等方法继续进行探索。
+
+# 参考文献
+
+https://s3.amazonaws.com/udacity-hosted-downloads/ud651/AtlanticHurricaneTracking.html
+
+https://s3.amazonaws.com/udacity-hosted-downloads/ud651/GeographyOfAmericanMusic.html
+
+
+
+
